@@ -433,6 +433,209 @@ function Table({pos, oppIn, callerPos, opps=[], chips, chipKey=0}){
 }
 
 
+
+// ── Menu Screen ───────────────────────────────────────────────────────────────
+function MenuScreen({modeStats={open:{hands:0,correct:0},vs3bet:{hands:0,correct:0},defense:{hands:0,correct:0},free:{hands:0,correct:0}}, onSelectMode, onExam}){
+  const modes = [
+    {
+      id:"open",
+      icon:"🎯",
+      title:"Open Raising",
+      desc:"Practice open raise/fold by position",
+      color:"#00c853",
+      border:"rgba(0,200,83,0.3)",
+      bg:"rgba(0,200,83,0.08)",
+    },
+    {
+      id:"vs3bet",
+      icon:"🔥",
+      title:"Facing 3-Bet",
+      desc:"4-bet, call or fold vs aggression",
+      color:"#f59e0b",
+      border:"rgba(245,158,11,0.3)",
+      bg:"rgba(245,158,11,0.08)",
+    },
+    {
+      id:"defense",
+      icon:"🛡️",
+      title:"Defense & 3-Bet",
+      desc:"Call, 3-bet or fold vs opener",
+      color:"#60a5fa",
+      border:"rgba(96,165,250,0.3)",
+      bg:"rgba(96,165,250,0.08)",
+    },
+  ];
+
+  const MIN_HANDS = 50;
+  const MIN_ACC = 95;
+
+  function getStats(id){
+    const s = (modeStats&&modeStats[id]) ? modeStats[id] : {hands:0, correct:0};
+    const acc = s.hands > 0 ? Math.round(s.correct/s.hands*100) : 0;
+    return {...s, acc};
+  }
+
+  const allUnlocked = modes.every(m=>{
+    const s=getStats(m.id);
+    return s.hands>=MIN_HANDS && s.acc>=MIN_ACC;
+  });
+
+  return (
+    <div style={{minHeight:"100vh",background:"#0d1117",fontFamily:"Inter,system-ui,sans-serif",padding:"20px 16px 40px"}}>
+      <style>{`
+        .mode-card{transition:all .2s ease;cursor:pointer;}
+        .mode-card:hover{transform:translateY(-3px);}
+        .mode-card:active{transform:scale(0.98);}
+        .mbtn{transition:all .15s;cursor:pointer;border:none;font-family:Inter,system-ui,sans-serif;}
+        .mbtn:hover{filter:brightness(1.15);}
+        .mbtn:active{transform:scale(0.97);}
+      `}</style>
+
+      {/* Header */}
+      <div style={{textAlign:"center",marginBottom:32,paddingTop:20}}>
+        <div style={{fontSize:36,marginBottom:8}}>♠</div>
+        <div style={{fontSize:26,fontWeight:800,color:"#fff",letterSpacing:1}}>Poker Range Trainer</div>
+        <div style={{fontSize:13,color:"#4a5568",marginTop:4}}>Master GTO preflop strategy</div>
+      </div>
+
+      {/* Mode cards */}
+      <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:24,maxWidth:440,margin:"0 auto 24px"}}>
+        {modes.map((m,i)=>{
+          const s=getStats(m.id);
+          const locked=false; // all modes available from start
+          const pct=Math.min(100,Math.round(s.hands/MIN_HANDS*100));
+          const accOk=s.acc>=MIN_ACC;
+          const handsOk=s.hands>=MIN_HANDS;
+          return (
+            <div key={m.id} className="mode-card"
+              onClick={()=>!locked&&onSelectMode(m.id)}
+              style={{
+                background:m.bg,
+                border:`1px solid ${m.border}`,
+                borderRadius:16,
+                padding:"18px 20px",
+                position:"relative",
+                overflow:"hidden",
+              }}>
+              {/* Top row */}
+              <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:12}}>
+                <div style={{display:"flex",alignItems:"center",gap:12}}>
+                  <span style={{fontSize:28}}>{m.icon}</span>
+                  <div>
+                    <div style={{fontSize:16,fontWeight:700,color:"#fff"}}>{m.title}</div>
+                    <div style={{fontSize:11,color:"#4a5568",marginTop:2}}>{m.desc}</div>
+                  </div>
+                </div>
+                {/* Accuracy badge */}
+                {s.hands>0&&(
+                  <div style={{
+                    background: accOk?"rgba(0,200,83,0.15)":"rgba(255,255,255,0.05)",
+                    border:`1px solid ${accOk?"rgba(0,200,83,0.4)":"rgba(255,255,255,0.1)"}`,
+                    borderRadius:20,padding:"4px 10px",textAlign:"center",flexShrink:0,
+                  }}>
+                    <div style={{fontSize:16,fontWeight:800,color:accOk?"#00c853":"#94a3b8"}}>{s.acc}%</div>
+                    <div style={{fontSize:9,color:"#4a5568"}}>ACCURACY</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Progress bar */}
+              <div>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                  <span style={{fontSize:10,color:"#4a5568"}}>{s.hands} / {MIN_HANDS} hands</span>
+                  <span style={{fontSize:10,color:handsOk?"#00c853":"#4a5568"}}>{handsOk?"✓ Done":"In progress"}</span>
+                </div>
+                <div style={{height:4,background:"rgba(255,255,255,0.06)",borderRadius:2,overflow:"hidden"}}>
+                  <div style={{
+                    height:"100%",borderRadius:2,
+                    width:`${pct}%`,
+                    background:`linear-gradient(90deg,${m.color}88,${m.color})`,
+                    transition:"width .4s ease",
+                  }}/>
+                </div>
+              </div>
+
+              {/* Play button */}
+              <button className="mbtn" style={{
+                marginTop:14,width:"100%",padding:"11px 0",borderRadius:10,
+                background:`linear-gradient(135deg,${m.color}22,${m.color}44)`,
+                border:`1px solid ${m.border}`,
+                color:m.color,fontSize:13,fontWeight:700,letterSpacing:1,
+              }}>
+                {s.hands===0?"START →":"CONTINUE →"}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Exam section */}
+      <div style={{maxWidth:440,margin:"0 auto"}}>
+        <div style={{
+          background: allUnlocked?"rgba(251,191,36,0.08)":"rgba(255,255,255,0.02)",
+          border:`1px solid ${allUnlocked?"rgba(251,191,36,0.35)":"rgba(255,255,255,0.06)"}`,
+          borderRadius:16,padding:"20px",
+          opacity: allUnlocked?1:0.6,
+        }}>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+            <span style={{fontSize:28}}>{allUnlocked?"🏆":"🔒"}</span>
+            <div>
+              <div style={{fontSize:16,fontWeight:700,color:allUnlocked?"#fbbf24":"#4a5568"}}>Final Exam</div>
+              <div style={{fontSize:11,color:"#4a5568"}}>100 hands · max 5 mistakes</div>
+            </div>
+          </div>
+
+          {!allUnlocked&&(
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:11,color:"#4a5568",marginBottom:8}}>Requirements to unlock:</div>
+              {modes.map(m=>{
+                const s=getStats(m.id);
+                const ok=s.hands>=MIN_HANDS&&s.acc>=MIN_ACC;
+                return (
+                  <div key={m.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}>
+                    <span style={{fontSize:12,color:ok?"#00c853":"#374151"}}>{ok?"✓":"○"}</span>
+                    <span style={{fontSize:11,color:ok?"#94a3b8":"#374151"}}>
+                      {m.title}: {s.hands}/{MIN_HANDS} hands · {s.acc}%/{MIN_ACC}% accuracy
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <button className="mbtn"
+            onClick={()=>allUnlocked&&onExam()}
+            disabled={!allUnlocked}
+            style={{
+              width:"100%",padding:"13px 0",borderRadius:10,
+              background:allUnlocked?"linear-gradient(135deg,#b45309,#d97706)":"rgba(255,255,255,0.04)",
+              border:allUnlocked?"none":"1px solid rgba(255,255,255,0.06)",
+              color:allUnlocked?"#fff":"#374151",
+              fontSize:14,fontWeight:700,letterSpacing:2,
+              cursor:allUnlocked?"pointer":"not-allowed",
+            }}>
+            {allUnlocked?"START EXAM 🏆":"LOCKED 🔒"}
+          </button>
+        </div>
+        {/* Free Play */}
+        <div style={{maxWidth:440,margin:"16px auto 0"}}>
+          <button
+            onClick={()=>onSelectMode("free")}
+            style={{
+              width:"100%",padding:"14px 0",borderRadius:12,
+              background:"rgba(255,255,255,0.03)",
+              border:"1px solid rgba(255,255,255,0.08)",
+              color:"#4a5568",fontSize:13,fontWeight:600,letterSpacing:1,
+              cursor:"pointer",fontFamily:"Inter,system-ui,sans-serif",
+            }}>
+            🃏 Free Play — full hand trainer
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Stats page
 function StatsPage({posStats, stats, onBack, onReset}){
   const positions=["UTG","MP","CO","BTN","SB"];
@@ -862,14 +1065,51 @@ function RangeEditor({ranges, threebetRanges, onSave, onBack}){
 
 // Main trainer
 export default function App(){
-  const [page, setPage] = useState("train"); // "train" | "ranges" | "stats"
+  const [page, setPage] = useState("menu"); // "menu" | "train" | "ranges" | "stats"
+  const [trainMode, setTrainMode] = useState("open"); // "open" | "vs3bet" | "defense"
   const [mode, setMode] = useState("preflop"); // "full" | "preflop"
   const [ranges, setRanges] = useState(DEFAULT_RANGES);
   const [threebetRanges, setThreebetRanges] = useState(DEFAULT_3BET_RANGES);
   const [g, setG] = useState(null);
-  const [stats, setStats] = useState({correct:0,wrong:0,hands:0});
+  const [stats, setStats] = useState(()=>{
+    try {
+      const saved=localStorage.getItem("pokerStats");
+      if(saved) return JSON.parse(saved);
+    } catch(e){}
+    return {correct:0,wrong:0,hands:0};
+  });
+  React.useEffect(()=>{
+    try { localStorage.setItem("pokerStats", JSON.stringify(stats)); } catch(e){}
+  },[stats]);
+  // modeStats: per training mode stats
+  const [modeStats, setModeStats] = useState(()=>{
+    try {
+      const saved=localStorage.getItem("pokerModeStats");
+      if(saved) return JSON.parse(saved);
+    } catch(e){}
+    return {open:{hands:0,correct:0},vs3bet:{hands:0,correct:0},defense:{hands:0,correct:0},free:{hands:0,correct:0}};
+  });
+
+  // Save modeStats to localStorage on every change
+  React.useEffect(()=>{
+    try { localStorage.setItem("pokerModeStats", JSON.stringify(modeStats)); } catch(e){}
+  },[modeStats]);
+  // examMode state
+  const [examActive, setExamActive] = useState(false);
+  const [examStats, setExamStats] = useState({hands:0,correct:0,mistakes:0,done:false});
+  const EXAM_HANDS = 100;
+  const EXAM_MAX_MISTAKES = 5;
   // posStats: { UTG: {correct:0,wrong:0}, MP: ... }
-  const [posStats, setPosStats] = useState({UTG:{c:0,w:0},MP:{c:0,w:0},CO:{c:0,w:0},BTN:{c:0,w:0},SB:{c:0,w:0}});
+  const [posStats, setPosStats] = useState(()=>{
+    try {
+      const saved=localStorage.getItem("pokerPosStats");
+      if(saved) return JSON.parse(saved);
+    } catch(e){}
+    return {UTG:{c:0,w:0},MP:{c:0,w:0},CO:{c:0,w:0},BTN:{c:0,w:0},SB:{c:0,w:0}};
+  });
+  React.useEffect(()=>{
+    try { localStorage.setItem("pokerPosStats", JSON.stringify(posStats)); } catch(e){}
+  },[posStats]);
   const [animKey, setAnimKey] = useState(0);
   const [hint, setHint] = useState(null);
   const [showBetSizes, setShowBetSizes] = useState(false);
@@ -920,7 +1160,8 @@ export default function App(){
     let openedBy=null; // who opened before hero
     let callerBeforeHero=null; // who cold-called before hero
 
-    if(modeRef.current==="preflop"){
+    const currentTrainMode=trainModeRef?.current||"open";
+    if(modeRef.current==="preflop" && currentTrainMode!=="free"){
       const roll2=Math.random();
       const postflopOrder2=["SB","BB","UTG","MP","CO","BTN"];
       const heroIdx2=postflopOrder2.indexOf(pos);
@@ -969,6 +1210,8 @@ export default function App(){
   // Use ref so act() always reads current mode even in stale closure
   const modeRef = React.useRef(mode);
   React.useEffect(()=>{ modeRef.current=mode; },[mode]);
+  const trainModeRef = React.useRef(trainMode);
+  React.useEffect(()=>{ trainModeRef.current=trainMode; },[trainMode]);
 
   function act(action, betSize=0.5){
     if(!g||g.result) return;
@@ -1097,6 +1340,10 @@ export default function App(){
       ng.decisions.push({street:"Preflop",action:action==="raise"?"RAISE":"FOLD",correct,note});
       setStats(s=>({...s,correct:s.correct+(correct?1:0),wrong:s.wrong+(correct?0:1)}));
       setPosStats(ps=>({...ps,[ng.pos]:{c:ps[ng.pos].c+(correct?1:0),w:ps[ng.pos].w+(correct?0:1)}}));
+      // Track mode stats
+      const curMode=examActive?"exam":trainMode;
+      if(!examActive) setModeStats(ms=>({...ms,[trainMode]:{hands:ms[trainMode].hands+1,correct:ms[trainMode].correct+(correct?1:0)}}));
+      else setExamStats(es=>({...es,hands:es.hands+1,correct:es.correct+(correct?1:0),mistakes:es.mistakes+(correct?0:1),done:es.hands+1>=EXAM_HANDS||(es.mistakes+(correct?0:1))>=EXAM_MAX_MISTAKES}));
 
       // Preflop-only mode: after open decision, simulate response then show result
       if(modeRef.current==="preflop"){
@@ -1255,11 +1502,17 @@ export default function App(){
     if(firstOop){
       const bbNextAct=oppPostflopAction(firstOop.cards,ng.board,false);
       ng.betFacing=bbNextAct==="bet";
-      if(ng.betFacing) ng.log.push(`${firstOop.pos} bets on ${next}`);
+      if(ng.betFacing){
+        ng.log.push(`${firstOop.pos} bets on ${next}`);
+        ng.chips={[firstOop.pos]:{label:"BET",color:"#dc2626"}};
+        ng.chipKey=(ng.chipKey||0)+1;
+      } else {
+        ng.chips={};
+      }
     } else {
       ng.betFacing=false;
+      ng.chips={};
     }
-    ng.chips={};
     setG(ng);
     setAnimKey(k=>k+1);
   }
@@ -1306,8 +1559,26 @@ export default function App(){
     deal(converted);
   }
 
-  if(page==="ranges") return <RangeEditor ranges={ranges} threebetRanges={threebetRanges} onSave={saveRanges} onBack={()=>setPage("train")}/>
-  if(page==="stats") return <StatsPage posStats={posStats} stats={stats} onBack={()=>setPage("train")} onReset={()=>{setPosStats({UTG:{c:0,w:0},MP:{c:0,w:0},CO:{c:0,w:0},BTN:{c:0,w:0},SB:{c:0,w:0}});setStats({correct:0,wrong:0,hands:0});}}/>;
+  if(page==="menu") return (
+    <MenuScreen
+      modeStats={modeStats}
+      onSelectMode={(m)=>{
+        setTrainMode(m);
+        setExamActive(false);
+        if(m==="free") setMode("full"); else setMode("preflop");
+        setPage("train");
+        deal();
+      }}
+      onExam={()=>{
+        setExamActive(true);
+        setExamStats({hands:0,correct:0,mistakes:0,done:false});
+        setPage("train");
+        deal();
+      }}
+    />
+  );
+  if(page==="ranges") return <RangeEditor ranges={ranges} threebetRanges={threebetRanges} onSave={saveRanges} onBack={()=>setPage("menu")}/>
+  if(page==="stats") return <StatsPage posStats={posStats} stats={stats} onBack={()=>setPage("menu")} onReset={()=>{setPosStats({UTG:{c:0,w:0},MP:{c:0,w:0},CO:{c:0,w:0},BTN:{c:0,w:0},SB:{c:0,w:0}});setStats({correct:0,wrong:0,hands:0});setModeStats({open:{hands:0,correct:0},vs3bet:{hands:0,correct:0},defense:{hands:0,correct:0},free:{hands:0,correct:0}});try{localStorage.removeItem("pokerModeStats");localStorage.removeItem("pokerPosStats");localStorage.removeItem("pokerStats");}catch(e){};}}/>;
   if(!g) return <div style={{minHeight:"100vh",background:"#09090f",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff"}}>...</div>;
 
   const done=!!g.result;
@@ -1339,16 +1610,23 @@ export default function App(){
 
       {/* Header */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-        <div>
-          <div style={{fontSize:10,letterSpacing:3,color:"#4a5568",fontWeight:600}}>6-MAX NO LIMIT HOLD'EM</div>
-          <div style={{fontSize:18,color:"#00c853",fontWeight:800,letterSpacing:1}}>♠ RANGE TRAINER</div>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <button className="btn" onClick={()=>setPage("menu")} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",color:"#94a3b8",borderRadius:8,padding:"7px 10px",fontSize:11,letterSpacing:1}}>
+            ← MENU
+          </button>
+          <div>
+            <div style={{fontSize:9,letterSpacing:2,color:"#374151"}}>
+              {examActive?"🏆 EXAM":trainMode==="open"?"🎯 OPEN RAISING":trainMode==="vs3bet"?"🔥 FACING 3-BET":trainMode==="free"?"🃏 FREE PLAY":"🛡️ DEFENSE"}
+            </div>
+            <div style={{fontSize:14,color:"#00c853",fontWeight:800,letterSpacing:1}}>RANGE TRAINER</div>
+          </div>
         </div>
         <div style={{display:"flex",gap:6}}>
-          <button className="btn" onClick={()=>setPage("stats")} style={{background:"rgba(96,165,250,0.08)",border:"1px solid rgba(96,165,250,0.25)",color:"#60a5fa",borderRadius:8,padding:"8px 10px",fontSize:11,letterSpacing:1}}>
-            📈 STATS
+          <button className="btn" onClick={()=>setPage("stats")} style={{background:"rgba(96,165,250,0.08)",border:"1px solid rgba(96,165,250,0.25)",color:"#60a5fa",borderRadius:8,padding:"7px 10px",fontSize:11}}>
+            📈
           </button>
-          <button className="btn" onClick={()=>setPage("ranges")} style={{background:"rgba(201,168,76,0.08)",border:"1px solid rgba(201,168,76,0.25)",color:"#00c853",borderRadius:8,padding:"8px 10px",fontSize:11,letterSpacing:1}}>
-            📊 RANGES
+          <button className="btn" onClick={()=>setPage("ranges")} style={{background:"rgba(0,200,83,0.08)",border:"1px solid rgba(0,200,83,0.25)",color:"#00c853",borderRadius:8,padding:"7px 10px",fontSize:11}}>
+            📊
           </button>
         </div>
       </div>
@@ -1384,6 +1662,15 @@ export default function App(){
       </div>
 
 
+
+      {/* Board cards — shown in free mode */}
+      {g.board&&g.board.length>0&&trainMode==="free"&&(
+        <div key={"board"+animKey} style={{display:"flex",justifyContent:"center",gap:7,marginBottom:10}}>
+          {g.board.map((c,i)=><Card key={c.rank+c.suit+i} card={c} delay={i*0.06} small/>)}
+          {g.street==="flop"&&[0,1].map(i=><div key={i} style={{width:62,height:88,borderRadius:6,border:"1px dashed rgba(255,255,255,0.08)"}}/>)}
+          {g.street==="turn"&&<div style={{width:62,height:88,borderRadius:6,border:"1px dashed rgba(255,255,255,0.08)"}}/>}
+        </div>
+      )}
 
       {/* Hero cards */}
       <div key={"h"+animKey} style={{display:"flex",justifyContent:"center",gap:18,marginBottom:12}}>
