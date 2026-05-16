@@ -435,202 +435,250 @@ function Table({pos, oppIn, callerPos, opps=[], chips, chipKey=0}){
 
 
 // ── Menu Screen ───────────────────────────────────────────────────────────────
-function MenuScreen({modeStats={open:{hands:0,correct:0},vs3bet:{hands:0,correct:0},defense:{hands:0,correct:0},free:{hands:0,correct:0}}, onSelectMode, onExam}){
-  const modes = [
-    {
-      id:"open",
-      icon:"🎯",
-      title:"Open Raising",
-      desc:"Practice open raise/fold by position",
-      color:"#00c853",
-      border:"rgba(0,200,83,0.3)",
-      bg:"rgba(0,200,83,0.08)",
-    },
-    {
-      id:"vs3bet",
-      icon:"🔥",
-      title:"Facing 3-Bet",
-      desc:"4-bet, call or fold vs aggression",
-      color:"#f59e0b",
-      border:"rgba(245,158,11,0.3)",
-      bg:"rgba(245,158,11,0.08)",
-    },
-    {
-      id:"defense",
-      icon:"🛡️",
-      title:"Defense & 3-Bet",
-      desc:"Call, 3-bet or fold vs opener",
-      color:"#60a5fa",
-      border:"rgba(96,165,250,0.3)",
-      bg:"rgba(96,165,250,0.08)",
-    },
-  ];
-
-  const MIN_HANDS = 50;
-  const MIN_ACC = 95;
-
-  function getStats(id){
-    const s = (modeStats&&modeStats[id]) ? modeStats[id] : {hands:0, correct:0};
-    const acc = s.hands > 0 ? Math.round(s.correct/s.hands*100) : 0;
-    return {...s, acc};
-  }
-
-  const allUnlocked = modes.every(m=>{
-    const s=getStats(m.id);
-    return s.hands>=MIN_HANDS && s.acc>=MIN_ACC;
-  });
-
+function ChipMascot({size=80}){
   return (
-    <div style={{minHeight:"100vh",background:"#0d1117",fontFamily:"Inter,system-ui,sans-serif",padding:"20px 16px 40px"}}>
+    <svg width={size} height={size*1.1} viewBox="0 0 80 88" style={{filter:"drop-shadow(0 8px 24px rgba(0,200,83,0.4))"}}>
+      {/* Shadow */}
+      <ellipse cx="40" cy="84" rx="28" ry="6" fill="rgba(0,0,0,0.3)"/>
+      {/* Chip body */}
+      <ellipse cx="40" cy="52" rx="36" ry="12" fill="#00a844" opacity="0.5"/>
+      <ellipse cx="40" cy="46" rx="36" ry="12" fill="#00a844" opacity="0.7"/>
+      <ellipse cx="40" cy="40" rx="36" ry="12" fill="#00c853"/>
+      {/* Top face */}
+      <ellipse cx="40" cy="28" rx="36" ry="12" fill="#00e676"/>
+      {/* Inner ring */}
+      <ellipse cx="40" cy="28" rx="28" ry="9" fill="#00c853"/>
+      <ellipse cx="40" cy="28" rx="20" ry="6.5" fill="#00e676"/>
+      {/* Notches */}
+      {[0,45,90,135,180,225,270,315].map((a,i)=>{
+        const r=36, rx2=a*Math.PI/180;
+        const x=40+r*Math.cos(rx2), y=28+12*Math.sin(rx2)*0.33;
+        return <rect key={i} x={x-3} y={y-2} width={6} height={4} rx={2} fill="#fff" opacity="0.9" transform={`rotate(${a},${x},${y})`}/>;
+      })}
+      {/* Eyes */}
+      <circle cx="32" cy="26" r="3.5" fill="#fff"/>
+      <circle cx="48" cy="26" r="3.5" fill="#fff"/>
+      <circle cx="33" cy="26.5" r="2" fill="#1a1a2e"/>
+      <circle cx="49" cy="26.5" r="2" fill="#1a1a2e"/>
+      <circle cx="33.8" cy="25.8" r="0.7" fill="#fff"/>
+      <circle cx="49.8" cy="25.8" r="0.7" fill="#fff"/>
+      {/* Smile */}
+      <path d="M33 31 Q40 36 47 31" stroke="#1a1a2e" strokeWidth="1.8" fill="none" strokeLinecap="round"/>
+      {/* Spade */}
+      <text x="40" y="30" textAnchor="middle" fontSize="0" fill="#fff" opacity="0"/> 
+    </svg>
+  );
+}
+
+const SECTIONS = [
+  {
+    id:"free",
+    icon:"🃏",
+    title:"Free Play",
+    subtitle:"Real game simulation",
+    color:"#00c853",
+    dark:"#00461a",
+    desc:"Experience a full poker hand from preflop to river. Practice against GTO opponents, make decisions on every street, and see a detailed breakdown of every choice you made.",
+    features:["Full hand preflop → river","GTO opponent simulation","Postflop bet/check/call/fold","Hand review with explanations"],
+    cta:"Start Free Play",
+  },
+  {
+    id:"preflop",
+    icon:"🎯",
+    title:"Preflop Training",
+    subtitle:"Master the foundation",
+    color:"#f59e0b",
+    dark:"#451a00",
+    desc:"The most important skill in poker. Train your preflop decisions across three levels: opening ranges, responding to 3-bets, and defending vs openers.",
+    features:["Open raise/fold by position","Facing 3-bet: 4-bet/call/fold","Defense & 3-bet ranges","Progress tracking per mode"],
+    cta:"Train Preflop",
+    submodes:[
+      {id:"open",label:"🎯 Open Raising"},
+      {id:"vs3bet",label:"🔥 Facing 3-Bet"},
+      {id:"defense",label:"🛡️ Defense"},
+    ],
+  },
+  {
+    id:"postflop",
+    icon:"🌊",
+    title:"Postflop",
+    subtitle:"Coming soon",
+    color:"#60a5fa",
+    dark:"#0f1f3d",
+    desc:"Flop, turn and river decisions are where the real money is made. Learn when to c-bet, when to check-raise, and how board texture changes everything.",
+    features:["C-bet strategy by board texture","Facing c-bet: call/raise/fold","Turn & river play","IP vs OOP decision making"],
+    cta:"Coming Soon",
+    locked:true,
+  },
+  {
+    id:"additional",
+    icon:"⚡",
+    title:"Advanced",
+    subtitle:"Coming soon",
+    color:"#a78bfa",
+    dark:"#1e1030",
+    desc:"Take your game to the next level with multiway pots, 3-bet pot postflop play, short stack push/fold strategy, and ICM tournament decisions.",
+    features:["Multiway pot strategy","3-bet pot postflop","Short stack push/fold","ICM tournament mode"],
+    cta:"Coming Soon",
+    locked:true,
+  },
+  {
+    id:"exam",
+    icon:"🏆",
+    title:"GTO Exam",
+    subtitle:"Prove your skills",
+    color:"#fbbf24",
+    dark:"#3d2000",
+    desc:"The ultimate test. 100 hands covering all preflop scenarios — opening, facing 3-bets, and defense. You can make maximum 5 mistakes. Are you ready?",
+    features:["100 hands total","Max 5 mistakes allowed","All preflop scenarios","Certificate of completion"],
+    cta:"Start Exam",
+  },
+];
+
+function MenuScreen({modeStats, onSelectMode, onExam}){
+  const [view, setView] = useState("home"); // "home" | section id
+  const ms=modeStats||{open:{hands:0,correct:0},vs3bet:{hands:0,correct:0},defense:{hands:0,correct:0},free:{hands:0,correct:0}};
+
+  function getS(id){ const s=ms[id]||{hands:0,correct:0}; return {...s,acc:s.hands>0?Math.round(s.correct/s.hands*100):0}; }
+
+  if(view==="home") return (
+    <div style={{minHeight:"100vh",background:"#0d1117",fontFamily:"Inter,system-ui,sans-serif",display:"flex",flexDirection:"column",alignItems:"center",padding:"30px 16px 40px",overflowY:"auto"}}>
       <style>{`
-        .mode-card{transition:all .2s ease;cursor:pointer;}
-        .mode-card:hover{transform:translateY(-3px);}
-        .mode-card:active{transform:scale(0.98);}
-        .mbtn{transition:all .15s;cursor:pointer;border:none;font-family:Inter,system-ui,sans-serif;}
-        .mbtn:hover{filter:brightness(1.15);}
-        .mbtn:active{transform:scale(0.97);}
+        .mbtn{transition:all .18s;cursor:pointer;border:none;font-family:Inter,system-ui,sans-serif;}
+        .mbtn:hover{filter:brightness(1.12);transform:translateY(-2px)}
+        .mbtn:active{transform:scale(0.97)}
+        .card{transition:all .2s;cursor:pointer;}
+        .card:hover{transform:translateY(-4px);}
+        .card:active{transform:scale(0.98);}
       `}</style>
 
-      {/* Header */}
-      <div style={{textAlign:"center",marginBottom:32,paddingTop:20}}>
-        <div style={{fontSize:36,marginBottom:8}}>♠</div>
-        <div style={{fontSize:26,fontWeight:800,color:"#fff",letterSpacing:1}}>Poker Range Trainer</div>
-        <div style={{fontSize:13,color:"#4a5568",marginTop:4}}>Master GTO preflop strategy</div>
+      {/* Hero */}
+      <div style={{textAlign:"center",marginBottom:32}}>
+        <ChipMascot size={90}/>
+        <div style={{fontSize:26,fontWeight:800,color:"#fff",marginTop:16,letterSpacing:0.5}}>
+          Welcome to PokerAce
+        </div>
+        <div style={{fontSize:13,color:"#4a5568",marginTop:6,maxWidth:280,lineHeight:1.5}}>
+          Your personal GTO trainer. Master preflop strategy and become a winning player.
+        </div>
       </div>
 
-      {/* Mode cards */}
-      <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:24,maxWidth:440,margin:"0 auto 24px"}}>
-        {modes.map((m,i)=>{
-          const s=getStats(m.id);
-          const locked=false; // all modes available from start
-          const pct=Math.min(100,Math.round(s.hands/MIN_HANDS*100));
-          const accOk=s.acc>=MIN_ACC;
-          const handsOk=s.hands>=MIN_HANDS;
-          return (
-            <div key={m.id} className="mode-card"
-              onClick={()=>!locked&&onSelectMode(m.id)}
-              style={{
-                background:m.bg,
-                border:`1px solid ${m.border}`,
-                borderRadius:16,
-                padding:"18px 20px",
-                position:"relative",
-                overflow:"hidden",
-              }}>
-              {/* Top row */}
-              <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:12}}>
-                <div style={{display:"flex",alignItems:"center",gap:12}}>
-                  <span style={{fontSize:28}}>{m.icon}</span>
-                  <div>
-                    <div style={{fontSize:16,fontWeight:700,color:"#fff"}}>{m.title}</div>
-                    <div style={{fontSize:11,color:"#4a5568",marginTop:2}}>{m.desc}</div>
-                  </div>
-                </div>
-                {/* Accuracy badge */}
-                {s.hands>0&&(
-                  <div style={{
-                    background: accOk?"rgba(0,200,83,0.15)":"rgba(255,255,255,0.05)",
-                    border:`1px solid ${accOk?"rgba(0,200,83,0.4)":"rgba(255,255,255,0.1)"}`,
-                    borderRadius:20,padding:"4px 10px",textAlign:"center",flexShrink:0,
-                  }}>
-                    <div style={{fontSize:16,fontWeight:800,color:accOk?"#00c853":"#94a3b8"}}>{s.acc}%</div>
-                    <div style={{fontSize:9,color:"#4a5568"}}>ACCURACY</div>
-                  </div>
-                )}
+      {/* Section cards */}
+      <div style={{width:"100%",maxWidth:440,display:"flex",flexDirection:"column",gap:10}}>
+        {SECTIONS.map(s=>(
+          <div key={s.id} className="card"
+            onClick={()=>setView(s.id)}
+            style={{
+              background:`linear-gradient(135deg,${s.dark},rgba(255,255,255,0.02))`,
+              border:`1px solid rgba(${s.color==="#00c853"?"0,200,83":s.color==="#f59e0b"?"245,158,11":s.color==="#60a5fa"?"96,165,250":s.color==="#a78bfa"?"167,139,250":"251,191,36"},0.2)`,
+              borderRadius:14,padding:"16px 18px",
+              display:"flex",alignItems:"center",gap:14,
+              opacity:s.locked?0.6:1,
+            }}>
+            <span style={{fontSize:28,flexShrink:0}}>{s.icon}</span>
+            <div style={{flex:1}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:15,fontWeight:700,color:"#fff"}}>{s.title}</span>
+                {s.locked&&<span style={{fontSize:9,background:"rgba(255,255,255,0.08)",color:"#4a5568",borderRadius:4,padding:"2px 6px",letterSpacing:1}}>SOON</span>}
               </div>
-
-              {/* Progress bar */}
-              <div>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                  <span style={{fontSize:10,color:"#4a5568"}}>{s.hands} / {MIN_HANDS} hands</span>
-                  <span style={{fontSize:10,color:handsOk?"#00c853":"#4a5568"}}>{handsOk?"✓ Done":"In progress"}</span>
-                </div>
-                <div style={{height:4,background:"rgba(255,255,255,0.06)",borderRadius:2,overflow:"hidden"}}>
-                  <div style={{
-                    height:"100%",borderRadius:2,
-                    width:`${pct}%`,
-                    background:`linear-gradient(90deg,${m.color}88,${m.color})`,
-                    transition:"width .4s ease",
-                  }}/>
-                </div>
-              </div>
-
-              {/* Play button */}
-              <button className="mbtn" style={{
-                marginTop:14,width:"100%",padding:"11px 0",borderRadius:10,
-                background:`linear-gradient(135deg,${m.color}22,${m.color}44)`,
-                border:`1px solid ${m.border}`,
-                color:m.color,fontSize:13,fontWeight:700,letterSpacing:1,
-              }}>
-                {s.hands===0?"START →":"CONTINUE →"}
-              </button>
+              <div style={{fontSize:11,color:"#4a5568",marginTop:2}}>{s.subtitle}</div>
             </div>
-          );
-        })}
-      </div>
-
-      {/* Exam section */}
-      <div style={{maxWidth:440,margin:"0 auto"}}>
-        <div style={{
-          background: allUnlocked?"rgba(251,191,36,0.08)":"rgba(255,255,255,0.02)",
-          border:`1px solid ${allUnlocked?"rgba(251,191,36,0.35)":"rgba(255,255,255,0.06)"}`,
-          borderRadius:16,padding:"20px",
-          opacity: allUnlocked?1:0.6,
-        }}>
-          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
-            <span style={{fontSize:28}}>{allUnlocked?"🏆":"🔒"}</span>
-            <div>
-              <div style={{fontSize:16,fontWeight:700,color:allUnlocked?"#fbbf24":"#4a5568"}}>Final Exam</div>
-              <div style={{fontSize:11,color:"#4a5568"}}>100 hands · max 5 mistakes</div>
-            </div>
+            <span style={{color:s.color,fontSize:20,flexShrink:0}}>›</span>
           </div>
+        ))}
+      </div>
+    </div>
+  );
 
-          {!allUnlocked&&(
-            <div style={{marginBottom:12}}>
-              <div style={{fontSize:11,color:"#4a5568",marginBottom:8}}>Requirements to unlock:</div>
-              {modes.map(m=>{
-                const s=getStats(m.id);
-                const ok=s.hands>=MIN_HANDS&&s.acc>=MIN_ACC;
+  // Section detail view
+  const sec=SECTIONS.find(s=>s.id===view);
+  if(!sec) return null;
+
+  return (
+    <div style={{minHeight:"100vh",background:"#0d1117",fontFamily:"Inter,system-ui,sans-serif",overflowY:"auto"}}>
+      <style>{`.mbtn{transition:all .18s;cursor:pointer;border:none;font-family:Inter,system-ui,sans-serif;}.mbtn:hover{filter:brightness(1.12);transform:translateY(-2px)}.mbtn:active{transform:scale(0.97)}`}</style>
+
+      {/* Header */}
+      <div style={{
+        background:`linear-gradient(180deg,${sec.dark} 0%,#0d1117 100%)`,
+        padding:"24px 20px 28px",
+        borderBottom:`1px solid rgba(255,255,255,0.05)`,
+      }}>
+        <button className="mbtn" onClick={()=>setView("home")}
+          style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",color:"#94a3b8",borderRadius:8,padding:"7px 12px",fontSize:11,marginBottom:20}}>
+          ← Back
+        </button>
+        <div style={{display:"flex",alignItems:"center",gap:14}}>
+          <span style={{fontSize:40}}>{sec.icon}</span>
+          <div>
+            <div style={{fontSize:22,fontWeight:800,color:"#fff"}}>{sec.title}</div>
+            <div style={{fontSize:12,color:sec.color,marginTop:2,fontWeight:600}}>{sec.subtitle}</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{padding:"24px 20px",maxWidth:440,margin:"0 auto"}}>
+        {/* Description */}
+        <p style={{fontSize:14,color:"#94a3b8",lineHeight:1.7,marginBottom:24}}>
+          {sec.desc}
+        </p>
+
+        {/* Features */}
+        <div style={{background:"#161b22",border:"1px solid #21262d",borderRadius:12,padding:"16px",marginBottom:24}}>
+          <div style={{fontSize:10,color:"#4a5568",letterSpacing:2,marginBottom:12}}>WHAT YOU'LL TRAIN</div>
+          {sec.features.map((f,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+              <span style={{color:sec.color,fontSize:14,flexShrink:0}}>✓</span>
+              <span style={{fontSize:13,color:"#e2e8f0"}}>{f}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Preflop submodes */}
+        {sec.submodes&&(
+          <div style={{marginBottom:20}}>
+            <div style={{fontSize:10,color:"#4a5568",letterSpacing:2,marginBottom:10}}>SELECT MODE</div>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {sec.submodes.map(m=>{
+                const s=getS(m.id);
                 return (
-                  <div key={m.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}>
-                    <span style={{fontSize:12,color:ok?"#00c853":"#374151"}}>{ok?"✓":"○"}</span>
-                    <span style={{fontSize:11,color:ok?"#94a3b8":"#374151"}}>
-                      {m.title}: {s.hands}/{MIN_HANDS} hands · {s.acc}%/{MIN_ACC}% accuracy
+                  <button key={m.id} className="mbtn" onClick={()=>onSelectMode(m.id)}
+                    style={{
+                      width:"100%",padding:"14px 16px",borderRadius:10,textAlign:"left",
+                      background:"rgba(245,158,11,0.07)",border:"1px solid rgba(245,158,11,0.2)",
+                      color:"#fff",display:"flex",alignItems:"center",justifyContent:"space-between",
+                    }}>
+                    <span style={{fontSize:13,fontWeight:600}}>{m.label}</span>
+                    <span style={{fontSize:11,color:s.hands>0?(s.acc>=95?"#00c853":"#94a3b8"):"#374151"}}>
+                      {s.hands>0?`${s.hands} hands · ${s.acc}%`:"Not started"}
                     </span>
-                  </div>
+                  </button>
                 );
               })}
             </div>
-          )}
+          </div>
+        )}
 
+        {/* Main CTA */}
+        {!sec.submodes&&(
           <button className="mbtn"
-            onClick={()=>allUnlocked&&onExam()}
-            disabled={!allUnlocked}
+            onClick={()=>{
+              if(sec.locked) return;
+              if(sec.id==="exam") onExam();
+              else onSelectMode(sec.id);
+            }}
             style={{
-              width:"100%",padding:"13px 0",borderRadius:10,
-              background:allUnlocked?"linear-gradient(135deg,#b45309,#d97706)":"rgba(255,255,255,0.04)",
-              border:allUnlocked?"none":"1px solid rgba(255,255,255,0.06)",
-              color:allUnlocked?"#fff":"#374151",
-              fontSize:14,fontWeight:700,letterSpacing:2,
-              cursor:allUnlocked?"pointer":"not-allowed",
+              width:"100%",padding:"16px 0",borderRadius:12,
+              background:sec.locked?"#161b22":`linear-gradient(135deg,${sec.dark.replace("#","").length===6?sec.color+"aa":sec.color},${sec.color})`,
+              border:sec.locked?"1px solid #21262d":"none",
+              color:sec.locked?"#374151":"#000",
+              fontSize:15,fontWeight:800,letterSpacing:1,
+              cursor:sec.locked?"not-allowed":"pointer",
+              boxShadow:sec.locked?"none":`0 4px 24px ${sec.color}44`,
             }}>
-            {allUnlocked?"START EXAM 🏆":"LOCKED 🔒"}
+            {sec.locked?"🔒 "+sec.cta:sec.cta+" →"}
           </button>
-        </div>
-        {/* Free Play */}
-        <div style={{maxWidth:440,margin:"16px auto 0"}}>
-          <button
-            onClick={()=>onSelectMode("free")}
-            style={{
-              width:"100%",padding:"14px 0",borderRadius:12,
-              background:"rgba(255,255,255,0.03)",
-              border:"1px solid rgba(255,255,255,0.08)",
-              color:"#4a5568",fontSize:13,fontWeight:600,letterSpacing:1,
-              cursor:"pointer",fontFamily:"Inter,system-ui,sans-serif",
-            }}>
-            🃏 Free Play — full hand trainer
-          </button>
-        </div>
+        )}
       </div>
     </div>
   );
